@@ -1,33 +1,33 @@
 ```mermaid
 flowchart LR
     %% Raw Dataset boxes (stacked vertically)
-    A1["📄<br/><br/>CSV<br/>Files<br/><br/>"]
-    A2["📋<br/><br/>JSON<br/>Data<br/><br/>"] 
-    A3["🗃️<br/><br/>SQL<br/>Dumps<br/><br/>"]
+    A1["<br/><br/>CSV<br/>Files<br/><br/>"]
+    A2["<br/><br/>JSON<br/>Data<br/><br/>"] 
+    A3["<br/><br/>SQL<br/>Dumps<br/><br/>"]
     
     %% Time Series Conversion
-    B["🔄<br/><br/>Time Series<br/>Conversion<br/><br/>• detect timestamps<br/>• aggregate data<br/>• resample periods<br/><br/>"]
+    B["<br/><br/>Time Series<br/>Conversion<br/><br/>• detect timestamps<br/>• aggregate data<br/>• resample periods<br/><br/>"]
     
     %% Feature Engineering boxes (stacked vertically)
-    C1["📊<br/><br/>Statistical<br/>Analysis<br/><br/>• mean, std<br/>• ACF patterns<br/>• seasonality<br/><br/>"]
-    C2["🤖<br/><br/>TS2Vec<br/>Embeddings<br/><br/>• neural encoding<br/>• time patterns<br/>• behavior capture<br/><br/>"]
-    C3["🧠<br/><br/>Autoencoders<br/>Compression<br/><br/>• dimensionality<br/>• feature learning<br/>• representation<br/><br/>"]
+    C1["<br/><br/>Statistical<br/>Analysis<br/><br/>• mean, std<br/>• ACF patterns<br/>• seasonality<br/><br/>"]
+    C2["<br/><br/>TS2Vec<br/>Embeddings<br/><br/>• neural encoding<br/>• time patterns<br/>• behavior capture<br/><br/>"]
+    C3["<br/><br/>Autoencoders<br/>Compression<br/><br/>• dimensionality<br/>• feature learning<br/>• representation<br/><br/>"]
     
     %% Vector Storage
-    D["💾<br/><br/>Vector Storage<br/>Database<br/><br/>• high-dim vectors<br/>• metadata storage<br/>• indexing system<br/><br/>"]
+    D["<br/><br/>Vector Storage<br/>Database<br/><br/>• high-dim vectors<br/>• metadata storage<br/>• indexing system<br/><br/>"]
     
     %% Storage options (under Vector Storage)
-    D1["🔧<br/><br/>FAISS<br/>Local Storage<br/><br/>• fast similarity<br/>• CPU optimized<br/>• offline access<br/><br/>"]
-    D2["☁️<br/><br/>Pinecone<br/>Cloud Storage<br/><br/>• managed service<br/>• auto-scaling<br/>• real-time queries<br/><br/>"]
+    D1["<br/><br/>FAISS<br/>Local Storage<br/><br/>• fast similarity<br/>• CPU optimized<br/>• offline access<br/><br/>"]
+    D2["<br/><br/>Pinecone<br/>Cloud Storage<br/><br/>• managed service<br/>• auto-scaling<br/>• real-time queries<br/><br/>"]
     
     %% Vector Alignment
-    E["🔍<br/><br/>Vector Alignment<br/>& Similarity<br/><br/>• similarity search<br/>• cosine distance<br/>• procrustes analysis<br/><br/>"]
+    E["<br/><br/>Vector Alignment<br/>& Similarity<br/><br/>• similarity search<br/>• cosine distance<br/>• procrustes analysis<br/><br/>"]
     
     %% Visualization
-    F["📈<br/><br/>Visualization<br/>& Analysis<br/><br/>• UMAP plots<br/>• PCA analysis<br/>• similarity scores<br/><br/>"]
+    F["<br/><br/>Visualization<br/>& Analysis<br/><br/>• UMAP plots<br/>• PCA analysis<br/>• similarity scores<br/><br/>"]
     
     %% Prediction
-    G["🚀<br/><br/>Prediction<br/>& Monitoring<br/><br/>• anomaly detection<br/>• real-time alerts<br/>• ML models<br/><br/>"]
+    G["<br/><br/>Prediction<br/>& Monitoring<br/><br/>• anomaly detection<br/>• real-time alerts<br/>• ML models<br/><br/>"]
     
     %% Connections with more spacing
     A1 -.->|upload| B
