@@ -1,5 +1,3 @@
-# Time Series Analysis & Vector Alignment Workflow
-
 ```mermaid
 flowchart LR
     %% Raw Dataset boxes (stacked vertically)
@@ -59,19 +57,3 @@ flowchart LR
     %% Style all links
     linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13 stroke:#6ee7b7,stroke-width:3px
 ```
-
-## Workflow Overview
-
-This automated pipeline transforms raw time-series data into actionable insights through vector alignment and similarity analysis.
-
-### Key Benefits
-- **End-to-End Automation**: From upload to insights
-- **Flexible Input**: Handles any time-component dataset  
-- **Pattern Discovery**: Uncover hidden relationships
-- **Real-time Monitoring**: Continuous analysis capabilities
-
-### Technical Stack
-- **Vector Databases**: FAISS, ChromaDB, Pinecone
-- **ML Models**: TS2Vec, TST, autoencoders
-- **Visualization**: UMAP, PCA, similarity matrices
-- **Monitoring**: Anomaly detection, predictive alerts
