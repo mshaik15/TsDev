@@ -1,3 +1,5 @@
+# venv\Scripts\activate <---- To activate the virtual environment on Windows
+# source venv/bin/activate <---- To activate the virtual environment on macOS/Linux
 # pip install -r requirements.txt
 numpy
 pandas
