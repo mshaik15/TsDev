@@ -1,29 +1,33 @@
 from collections import Counter
+import pandas as pd
+import numpy as np
 
-def infer_time_interval(df):
-    deltas = [] # Store time differences between consecutive timestamps
-    
-    for i in range(1, len(df)):
-        delta = df.timestamp[i] - df.timestamp[i - 1]
-        deltas.append(delta)
+#================================================================
+# 1. Infer the time interval from the timestamps in the DataFrame
+#================================================================
+def infer_time_interval(df) -> int:
+    default = 1  # Default time interval in seconds
+    if len(df) < 2:
+        print("Not enough timestamps to infer interval.")
+        return default
 
-    # Find the mode of the time differences
-    delta_counts = Counter(deltas)
+    df = df.copy()
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    deltas = df["timestamp"].diff().dropna()
+    deltas_in_seconds = [int(delta.total_seconds()) for delta in deltas]
+
+    delta_counts = Counter(deltas_in_seconds)
     t_rec, _ = delta_counts.most_common(1)[0]
 
-    response = input(f"Time interval inferred: {t_rec}, continue with this value? (y/n).")
-    if response.lower() == 'y' or 'yes':
-        print(f"Using time interval: {t_rec}")
+    response = input(f"Time interval inferred: {t_rec} seconds. Continue with this value? (y/n): ").strip().lower()
+    if response in ['y', 'yes']:
+        print(f"Using time interval: {t_rec} seconds.")
         return t_rec
-    
     else:
-        t_rec = input("Please enter the time interval in seconds:")
-
         try:
-            t_rec = int(t_rec)
-            print(f"Using user-defined time interval: {t_rec}")
-            return t_rec
-        
+            user_input = int(input("Please enter the time interval in seconds: ").strip())
+            print(f"Using user-defined time interval: {user_input} seconds.")
+            return user_input
         except ValueError:
-            print("Invalid input. Using default time interval of 1 second.")
-            return 1
+            print("Invalid input. Using default time interval.")
+            return default
