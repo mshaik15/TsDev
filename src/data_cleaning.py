@@ -44,11 +44,11 @@ def standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.columns:
         try:
             rename_columns[col] = column_map[col]
+            
         except KeyError:
             print(f"Warning: No mapping found for column '{col}', leaving it unchanged.")
 
     df = df.rename(columns=rename_columns)
-
     return df
 
 def remove_missing_values(df: pd.DataFrame) -> pd.DataFrame:
@@ -58,17 +58,10 @@ def remove_missing_values(df: pd.DataFrame) -> pd.DataFrame:
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-
     df = standardize_columns(df) 
-
     df.drop_duplicates(inplace=True)
-
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors='coerce')
-
     df = remove_missing_values(df)
-    
     df["timestamp"] = df["timestamp"].dt.strftime("%Y-%m-%d")
-
     df = df.sort_values("timestamp").reset_index(drop=True)
-
     return df
