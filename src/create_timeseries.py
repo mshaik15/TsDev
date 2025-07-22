@@ -1,17 +1,18 @@
-import pandas as pd
-import numpy as np
+from collections import Counter
 
 def infer_time_interval(df):
-    deltas = []
+    deltas = [] # Store time differences between consecutive timestamps
     
     for i in range(1, len(df)):
         delta = df.timestamp[i] - df.timestamp[i - 1]
         deltas.append(delta)
 
-    t_rec = np.mode(deltas)
+    # Find the mode of the time differences
+    delta_counts = Counter(deltas)
+    t_rec, _ = delta_counts.most_common(1)[0]
 
     response = input(f"Time interval inferred: {t_rec}, continue with this value? (y/n).")
-    if response.lower() == 'y':
+    if response.lower() == 'y' or 'yes':
         print(f"Using time interval: {t_rec}")
         return t_rec
     
@@ -26,4 +27,3 @@ def infer_time_interval(df):
         except ValueError:
             print("Invalid input. Using default time interval of 1 second.")
             return 1
-        
