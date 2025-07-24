@@ -30,4 +30,29 @@ def infer_time_interval(df) -> int:
         except ValueError:
             print("Invalid input. Using default time interval.")
             return default
-        
+
+#================================================================
+# 2. Create full time index
+#================================================================
+def create_full_time_index (df, t_rec) -> pd.DatetimeIndex:
+    df = df.copy()
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+
+    start = df["timestamp"].min()
+    end = df["timestamp"].max()
+
+    full_index = pd.date_range(start=start, end=end, freq=f"{t_rec}s")
+    return full_index
+
+#================================================================
+# 3. Reindex and find gaps
+#================================================================
+def reindex_and_find_gaps(df, full_index) -> pd.DataFrame:
+    df = df.copy()
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df = df.set_index("timestamp")
+
+    reindexed_df = df.reindex(full_index)
+    missing = reindexed_df[reindexed_df.isnull().any(axis=1)].index
+    return missing
+
