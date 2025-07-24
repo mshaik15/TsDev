@@ -1,88 +1,155 @@
-from collections import Counter
+from typing import Literal, Optional
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
-#================================================================
-# 1. Infer the time interval from the timestamps in the DataFrame
-#================================================================
-def infer_time_interval(df) -> int:
-    default = 1 # Set a default time interval in seconds
-    if len(df) < 2:
-        print("Not enough timestamps to make an interval")
-        return default
+#============================================================================
+# Used types
+#============================================================================
+possible_freq = Literal["D", "H", "T", "30T", "W", "M"]
+possible_agg = Literal["mean", "sum", "first", "last", "max", "min"]
+possible_interp = Literal["linear", "time", "spline", "ffill", "bfill", None]
+
+#============================================================================
+# Validate inputs, check if we can construct a valid time series
+#============================================================================
+def validate_inputs(df: pd.DataFrame, dependent_var: str):
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("df must be a pandas DataFrame")
+    if df.empty:
+        raise ValueError("DataFrame cannot be empty")
+    if "timestamp" not in df.columns:
+        raise ValueError("Data must have a timestamp column")
+    if dependent_var not in df.columns:
+        available_cols = ", ".join(df.columns.tolist())
+        raise ValueError(f"Column '{dependent_var}' doesn't exist in data. Available columns: {available_cols}")
+    if not pd.api.types.is_numeric_dtype(df[dependent_var]):
+        raise ValueError(f"Dependent variable '{dependent_var}' must be numeric")
     
-    df = df.copy() # Make a copy
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-    intervals = df["timestamp"].diff().dropna() # Create a list of intervals
-    intervals_seconds = [int(i.total_seconds()) for i in intervals] # Convert all intervals into seconds
-
-    interval_count = Counter(intervals_seconds)
-    t_rec, _ = interval_count.most_common(1)[0]
-
-    response = input(f"Given time interval {t_rec}. Continue? (y/n): ").strip().lower()
-    if response in ['y', 'yes']:
-        return t_rec
+#============================================================================
+# Prepare dataframe, convert timestamp -> datetime and set as index
+#============================================================================
+def prepare_data(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
+    if not inplace:
+        df = df.copy()
+    
+    if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+    
+    if inplace:
+        df.set_index("timestamp", inplace=True)
+        return df
     else:
-        try:
-            user_input = int(input("Input time interval in seconds: ").strip())
-            print(f"Using user-defined time {user_input}")
-            return user_input
-        except ValueError:
-            print("Invalid input. Using default time interval.")
-            return default
+        return df.set_index("timestamp")
 
-#================================================================
-# 2. Create full time index
-#================================================================
-def create_full_time_index (df, t_rec) -> pd.DatetimeIndex:
-    df = df.copy()
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
+#============================================================================
+# Resample timeseries to specific aggregation and frequency
+#============================================================================
+def resample_series(df: pd.DataFrame, dependent_var: str, freq: possible_freq, agg: possible_agg) -> pd.Series:
+    resampled = df[dependent_var].resample(freq)
+    
+    if agg == "mean":
+        return resampled.mean()
+    elif agg == "sum":
+        return resampled.sum()
+    elif agg == "first":
+        return resampled.first()
+    elif agg == "last":
+        return resampled.last()
+    elif agg == "max":
+        return resampled.max()
+    elif agg == "min":
+        return resampled.min()
+    else:
+        raise ValueError(f"Unsupported aggregation method: {agg}")
 
-    start = df["timestamp"].min()
-    end = df["timestamp"].max()
+#============================================================================
+# Fill in missing data, using statistical methods
+#============================================================================
+def interpolate_series(ts: pd.Series, interpolation: possible_interp, spline_order: Optional[int]) -> pd.Series:
+    try:
+        if interpolation == "spline":
+            if spline_order is None:
+                raise ValueError("spline_order required for spline interpolation")
+            return ts.interpolate(method="spline", order=spline_order)
+        elif interpolation in {"linear", "time", "ffill", "bfill"}:
+            return ts.interpolate(method=interpolation)
+        return ts
+    except Exception as e:
+        raise ValueError(f"Interpolation failed with method '{interpolation}': {str(e)}")
 
-    full_index = pd.date_range(start=start, end=end, freq=f"{t_rec}s")
-    return full_index
+#============================================================================
+# Check end values
+#============================================================================
+def fill_end_values(ts: pd.Series) -> pd.Series:
+    return ts.ffill().bfill()
 
-#================================================================
-# 3. Reindex and find gaps
-#================================================================
-def reindex_and_find_gaps(df, full_index) -> pd.DataFrame:
-    df = df.copy()
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df = df.set_index("timestamp")
+#============================================================================
+# Infer Frequency, Function to help the user
+#============================================================================
+def infer_frequency(df: pd.DataFrame) -> str:
+    timestamps = df["timestamp"].sort_values()
+    
+    if len(timestamps) > 1000:
+        timestamps = timestamps.head(1000)
+    
+    deltas = timestamps.diff().dropna()
+    
+    if deltas.empty:
+        return "Unknown"
+        
+    mode_delta = deltas.mode()[0] if not deltas.mode().empty else deltas.iloc[0]
+    seconds = mode_delta.total_seconds()
+    
+    print(f"Inferred time delta: {seconds} seconds ({mode_delta})")
 
-    reindexed_df = df.reindex(full_index)
-    missing = reindexed_df[reindexed_df.isnull().any(axis=1)].index
-    return missing
+    if seconds <= 60:
+        print("Suggested freq: 'T' (minutely) or '30T' (30 mins)")
+    elif seconds <= 3600:
+        print("Suggested freq: 'H' (hourly)")
+    elif seconds <= 86400:
+        print("Suggested freq: 'D' (daily)")
+    else:
+        print("Suggested freq: 'W' (weekly) or 'M' (monthly)")
 
-#================================================================
-# 4. Fill in missing stats
-#================================================================
-def get_gap_stats(missing, t_rec) -> dict:
-    print(f"Found {len(missing)} missing timestamps")
-#================================================================
-# 5. Plot missing stats
-#================================================================
-def plot_missing_timestamps(missing):
-    plt.figure(figsize=(10, 5))
-    plt.plot(missing, [1] * len(missing), 'ro', markersize=2)
-    plt.title('Missing Timestamps')
-    plt.xlabel('Timestamp')
-    plt.ylabel('Missing Indicator')
-    plt.yticks([])
-    plt.grid()
-    plt.show()
-#================================================================
-# 6. Print summary stats
-#================================================================
-def print_summary_stats(df):
-    print("Summary Statistics:")
-    print(df.describe())
-    print("\nMissing Values:")
-    print(df.isnull().sum())
-    print("\nData Types:")
-    print(df.dtypes)
-    print("\nFirst 5 Rows:")
-    print(df.head())
+    return pd.infer_freq(df["timestamp"].sort_values()) or "Unknown"
+
+#============================================================================
+# Interpolation Methods, Function to help the user
+#============================================================================
+def interpolation_help():
+    print("Available options:")
+    print("- 'linear': Fills missing values with a straight-line")
+    print("- 'time': Fills missing values with time-based indexing")
+    print("- 'spline': Fills missing values with smooth curve")
+    print("- 'ffill': Forward fill using previous known value")
+    print("- 'bfill': Backward fill using next known value\n")
+
+#============================================================================
+# Final check
+#============================================================================
+def run_checks(ts: pd.Series):
+    if not ts.index.is_monotonic_increasing:
+        raise ValueError("Time series index is not monotonic increasing.")
+    if ts.isnull().sum() > 0:
+        print(f"Warning: Time series still contains {ts.isnull().sum()} missing values.")
+
+#============================================================================
+# Main Function
+#============================================================================
+def construct_time_series(
+    df: pd.DataFrame,
+    dependent_var: str = "value",
+    freq: possible_freq = "D",
+    agg: possible_agg = "mean",
+    interpolation: possible_interp = "linear",
+    spline_order: Optional[int] = 2,
+    fill_extremes: bool = True) -> pd.Series:
+
+    validate_inputs(df, dependent_var)
+    df = prepare_data(df)
+    ts = resample_series(df, dependent_var, freq, agg)
+    ts = interpolate_series(ts, interpolation, spline_order)
+    if fill_extremes:
+        ts = fill_end_values(ts)
+    run_checks(ts)
+    return ts
