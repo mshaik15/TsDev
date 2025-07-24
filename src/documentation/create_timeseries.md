@@ -1,5 +1,5 @@
 
-# 📈 `construct_time_series` Pipeline Documentation
+# `construct_time_series` Pipeline Documentation
 
 ## Overview
 
@@ -8,7 +8,7 @@ It supports **resampling**, **aggregation**, and **interpolation**, making it id
 
 ---
 
-## 🔧 Workflow Summary
+## Workflow Summary
 
 ```text
 Step 1: Input raw data (must contain a timestamp column and a numeric variable)
@@ -21,7 +21,7 @@ Step 6: Return the final, clean time series
 
 ---
 
-## 🧪 Function Reference
+## Function Reference
 
 ### 1. `validate_inputs(df, dependent_var)`
 
@@ -110,7 +110,7 @@ Step 6: Return the final, clean time series
 
 ---
 
-## 🔁 Suggested Frequencies (based on time delta)
+## Suggested Frequencies (based on time delta)
 
 | Time Delta | Suggested `freq` |
 | ---------- | ---------------- |
@@ -123,7 +123,7 @@ Use `infer_frequency(df)` to guide your selection.
 
 ---
 
-## ✅ Example Usage
+## Example Usage
 
 ```python
 ts = construct_time_series(
@@ -138,7 +138,7 @@ ts.plot()
 
 ---
 
-## 📌 Notes
+## Notes
 
 * The `timestamp` column **must be present** in your dataset.
 * The `dependent_var` column must contain **numeric values**.
