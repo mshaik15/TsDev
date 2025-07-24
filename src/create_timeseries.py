@@ -19,7 +19,7 @@ def validate_inputs(df: pd.DataFrame, dependent_var: str):
         raise ValueError("DataFrame cannot be empty")
     if "timestamp" not in df.columns:
         raise ValueError("Data must have a timestamp column")
-    if dependent_var not in df.columns:
+    if dependent_var not in df.columns: # Show usable y-axis variables
         available_cols = ", ".join(df.columns.tolist())
         raise ValueError(f"Column '{dependent_var}' doesn't exist in data. Available columns: {available_cols}")
     if not pd.api.types.is_numeric_dtype(df[dependent_var]):
@@ -45,20 +45,9 @@ def prepare_data(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
 # Resample timeseries to specific aggregation and frequency
 #============================================================================
 def resample_series(df: pd.DataFrame, dependent_var: str, freq: possible_freq, agg: possible_agg) -> pd.Series:
-    resampled = df[dependent_var].resample(freq)
-    if agg == "mean":
-        return resampled.mean()
-    elif agg == "sum":
-        return resampled.sum()
-    elif agg == "first":
-        return resampled.first()
-    elif agg == "last":
-        return resampled.last()
-    elif agg == "max":
-        return resampled.max()
-    elif agg == "min":
-        return resampled.min()
-    else:
+    try:
+        return getattr(df[dependent_var].resample(freq), agg)()
+    except AttributeError:
         raise ValueError(f"Unsupported aggregation method: {agg}")
 
 #============================================================================
