@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import os
 
 def standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
     column_map = {
@@ -18,24 +19,6 @@ def standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
         "end_time": "timestamp",
         "observed_at": "timestamp",
         "t": "timestamp",
-
-        # Value candidates
-        "value": "value",
-        "amount": "value",
-        "count": "value",
-        "total": "value",
-        "visits": "value",
-        "entries": "value",
-        "score": "value",
-        "tips": "value",
-        "revenue": "value",
-        "sales": "value",
-        "volume": "value",
-        "play_count": "value",
-        "transaction_value": "value",
-        "traffic": "value",
-        "ticket_count": "value",
-        "activity_level": "value"
     }
 
     df.columns = [col.strip().lower() for col in df.columns]
@@ -56,7 +39,7 @@ def remove_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     df = df.dropna(subset=["timestamp"])  
     return df
 
-def clean_data(df: pd.DataFrame) -> pd.DataFrame:
+def clean_data(df: pd.DataFrame, file_path:str = None) -> pd.DataFrame:
     df = df.copy()
     df = standardize_columns(df) 
     df.drop_duplicates(inplace=True)
@@ -64,4 +47,13 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     df = remove_missing_values(df)
     df["timestamp"] = df["timestamp"].dt.strftime("%Y-%m-%d")
     df = df.sort_values("timestamp").reset_index(drop=True)
+
+    if file_path:
+        base = os.path.basename(file_path)            
+        name, _ = os.path.splitext(base)                    
+        new_filename = f"{name}_cleaned.csv"                      
+        output_path = os.path.join("../data/cleaned", new_filename)
+        df.to_csv(output_path, index=False)
+        print(f"Saved cleaned file to: {output_path}")
+
     return df
