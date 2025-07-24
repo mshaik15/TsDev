@@ -46,7 +46,6 @@ def prepare_data(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
 #============================================================================
 def resample_series(df: pd.DataFrame, dependent_var: str, freq: possible_freq, agg: possible_agg) -> pd.Series:
     resampled = df[dependent_var].resample(freq)
-    
     if agg == "mean":
         return resampled.mean()
     elif agg == "sum":
@@ -88,12 +87,9 @@ def fill_end_values(ts: pd.Series) -> pd.Series:
 #============================================================================
 def infer_frequency(df: pd.DataFrame) -> str:
     timestamps = df["timestamp"].sort_values()
-    
     if len(timestamps) > 1000:
         timestamps = timestamps.head(1000)
-    
     deltas = timestamps.diff().dropna()
-    
     if deltas.empty:
         return "Unknown"
         
@@ -110,7 +106,6 @@ def infer_frequency(df: pd.DataFrame) -> str:
         print("Suggested freq: 'D' (daily)")
     else:
         print("Suggested freq: 'W' (weekly) or 'M' (monthly)")
-
     return pd.infer_freq(df["timestamp"].sort_values()) or "Unknown"
 
 #============================================================================
