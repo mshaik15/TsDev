@@ -1,21 +1,37 @@
-
 # `construct_time_series` Function Pipeline Documentation
 
 ## Overview
 
-This function transforms a raw timestamped dataset into a clean, regularly spaced time series.
+This documentation explains what happens **under the hood** of the `construct_time_series()` function. It outlines the full pipeline of helper functions used to transform a raw timestamped dataset into a clean, regularly spaced time series.
 It supports **resampling**, **aggregation**, and **interpolation**, making it ideal for analysis of time-based data (e.g. sensor readings, financial data, etc.).
 
 ---
 
-## Workflow Summary
+`construct_time_series(...)`
+
+* **Purpose**: Main function to build a clean time series.
+* **Parameters**:
+
+| Parameter       | Type                    | Description                                   |
+| --------------- | ----------------------- | --------------------------------------------- |
+| `df`            | `pd.DataFrame`          | Raw dataset with a `'timestamp'` column       |
+| `dependent_var` | `str`                   | The variable to analyze (default = `"value"`) |
+| `freq`          | `"D"`, `"H"`, etc.      | Resampling frequency (e.g., daily, hourly)    |
+| `agg`           | `"mean"`, `"sum"`, etc. | Aggregation strategy for downsampling         |
+| `interpolation` | See above               | Interpolation method to fill missing values   |
+| `spline_order`  | `int` or `None`         | Spline order (required if using `"spline"`)   |
+| `fill_extremes` | `bool`                  | Fill values at start/end using ffill/bfill    |
+
+* **Returns**: A clean, indexed `pd.Series` ready for analysis.
+
+## Function Workflow Summary
 
 ```text
-Step 1: Input raw data (must contain a timestamp column and a numeric variable)
-Step 2: Choose desired frequency (e.g., daily, hourly)
-Step 3: Resample data using an aggregation method (e.g., average, sum)
-Step 4: Fill missing values using interpolation (e.g., linear, time-based, spline)
-Step 5: Optionally fill beginning and end NaNs using forward/backward fill
+Step 1: `validate_inputs(df, dependent_var)` & `prepare_data(df, inplace=False)` - Input raw data (must contain a timestamp column and a numeric variable)
+Step 2: infer_frequency(df)` - Choose desired frequency (e.g., daily, hourly)
+Step 3: `resample_series(df, dependent_var, freq, agg)` - Resample data using an aggregation method (e.g., average, sum)
+Step 4: `interpolate_series(ts, interpolation, spline_order)` - Fill missing values using interpolation (e.g., linear, time-based, spline)
+Step 5: `fill_end_values(ts)` - Optionally fill beginning and end NaNs using forward/backward fill
 Step 6: Return the final, clean time series
 ```
 
@@ -24,36 +40,30 @@ Step 6: Return the final, clean time series
 ## Function Reference
 
 ### 1. `validate_inputs(df, dependent_var)`
-
 * **Purpose**: Ensure input DataFrame is usable
 * **Checks**:
-
   * DataFrame is non-empty
   * Column `timestamp` exists
-  * Column `dependent_var` exists and is numeric
-
+  * Column `dependent_var` exists and is numeric (a float or an integer)
 ---
 
 ### 2. `prepare_data(df, inplace=False)`
-
 * **Purpose**: Converts `'timestamp'` to `datetime` type and sets it as index
 * **Returns**: DataFrame indexed by `timestamp`
-
 ---
 
 ### 3. `infer_frequency(df)`
-
 * **Purpose**: Prints and returns the most common time intervals between timestamps. This is useful to understand the data and how to resample it if needed
 * **Useful for**: Choosing the appropriate frequency (`freq`) for resampling (if needed)
-
 ---
 
 ### 4. `resample_series(df, dependent_var, freq, agg)`
 
 * **Purpose**: Resamples time series using the specified frequency and aggregation method
 * **Example**:
-  * If you want to analyze the data in a different frequency, you can resample it using resample_series
-  * This function changes the frequency of the data by applying a summary method like avg or sum 
+
+  * If you want to analyze the data in a different frequency, you can resample it using resample\_series
+  * This function changes the frequency of the data by applying a summary method like avg or sum
   * For example, it can convert minute data into hourly data by taking the avg or sum of values within each hour
   * Converting the data into a time series in mins to a time series in hours with `.resample('H').mean()`
 
@@ -78,13 +88,7 @@ Step 6: Return the final, clean time series
 
 ---
 
-### 7. `interpolation_help()`
-
-* **Purpose**: Displays supported interpolation methods and when to use them
-
----
-
-### 8. `run_checks(ts)`
+### 7. `run_checks(ts)`
 
 * **Purpose**: Performs a final validation check on the time series
 
@@ -92,25 +96,12 @@ Step 6: Return the final, clean time series
   * Warns if null values still remain
 
 ---
+## Suggested Interpolation methods
 
-### 9. `construct_time_series(...)`
-
-* **Purpose**: Main function to build a clean time series.
-* **Parameters**:
-
-| Parameter       | Type                    | Description                                   |
-| --------------- | ----------------------- | --------------------------------------------- |
-| `df`            | `pd.DataFrame`          | Raw dataset with a `'timestamp'` column       |
-| `dependent_var` | `str`                   | The variable to analyze (default = `"value"`) |
-| `freq`          | `"D"`, `"H"`, etc.      | Resampling frequency (e.g., daily, hourly)    |
-| `agg`           | `"mean"`, `"sum"`, etc. | Aggregation strategy for downsampling         |
-| `interpolation` | See above               | Interpolation method to fill missing values   |
-| `spline_order`  | `int` or `None`         | Spline order (required if using `"spline"`)   |
-| `fill_extremes` | `bool`                  | Fill values at start/end using ffill/bfill    |
-
-* **Returns**: A clean, indexed `pd.Series` ready for analysis.
-
+### `interpolation_help()`
+* **Purpose**: Displays supported interpolation methods and when to use them
 ---
+
 
 ## Suggested Frequencies (based on time intervals)
 
@@ -146,4 +137,3 @@ ts.plot()
 * The `dependent_var` column must contain **numeric values**.
 * Interpolation is optional but recommended if data has gaps.
 * Frequency labels follow [pandas offset aliases](https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#dateoffset-objects).
-
