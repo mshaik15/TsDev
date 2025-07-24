@@ -1,6 +1,7 @@
 from collections import Counter
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 #================================================================
 # 1. Infer the time interval from the timestamps in the DataFrame
@@ -56,3 +57,32 @@ def reindex_and_find_gaps(df, full_index) -> pd.DataFrame:
     missing = reindexed_df[reindexed_df.isnull().any(axis=1)].index
     return missing
 
+#================================================================
+# 4. Fill in missing stats
+#================================================================
+def get_gap_stats(missing, t_rec) -> dict:
+    print(f"Found {len(missing)} missing timestamps")
+#================================================================
+# 5. Plot missing stats
+#================================================================
+def plot_missing_timestamps(missing):
+    plt.figure(figsize=(10, 5))
+    plt.plot(missing, [1] * len(missing), 'ro', markersize=2)
+    plt.title('Missing Timestamps')
+    plt.xlabel('Timestamp')
+    plt.ylabel('Missing Indicator')
+    plt.yticks([])
+    plt.grid()
+    plt.show()
+#================================================================
+# 6. Print summary stats
+#================================================================
+def print_summary_stats(df):
+    print("Summary Statistics:")
+    print(df.describe())
+    print("\nMissing Values:")
+    print(df.isnull().sum())
+    print("\nData Types:")
+    print(df.dtypes)
+    print("\nFirst 5 Rows:")
+    print(df.head())
