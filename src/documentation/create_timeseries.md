@@ -25,35 +25,37 @@ Step 6: Return the final, clean time series
 
 ### 1. `validate_inputs(df, dependent_var)`
 
-* **Purpose**: Ensure input DataFrame is usable.
+* **Purpose**: Ensure input DataFrame is usable
 * **Checks**:
 
-  * DataFrame is non-empty.
-  * Column `timestamp` exists.
-  * Column `dependent_var` exists and is numeric.
+  * DataFrame is non-empty
+  * Column `timestamp` exists
+  * Column `dependent_var` exists and is numeric
 
 ---
 
 ### 2. `prepare_data(df, inplace=False)`
 
-* **Purpose**: Converts `'timestamp'` to `datetime` type and sets it as index.
-* **Returns**: DataFrame indexed by `timestamp`.
+* **Purpose**: Converts `'timestamp'` to `datetime` type and sets it as index
+* **Returns**: DataFrame indexed by `timestamp`
 
 ---
 
 ### 3. `infer_frequency(df)`
 
-* **Purpose**: Prints and returns the most common time delta between timestamps.
-* **Useful for**: Choosing the appropriate frequency (`freq`) for resampling.
+* **Purpose**: Prints and returns the most common time intervals between timestamps. This is useful to understand the data and how to resample it if needed
+* **Useful for**: Choosing the appropriate frequency (`freq`) for resampling (if needed)
 
 ---
 
 ### 4. `resample_series(df, dependent_var, freq, agg)`
 
-* **Purpose**: Resamples time series using the specified frequency and aggregation method.
+* **Purpose**: Resamples time series using the specified frequency and aggregation method
 * **Example**:
-
-  * Convert minute-level data to hourly with `.resample('H').mean()`
+  * If you want to analyze the data in a different frequency, you can resample it using resample_series
+  * This function Changes the frequency of the data by applying a summary method like avg or sum 
+  * For example, it can convert minute data into hourly data by taking the avg or sum of values within each hour
+  * Converting the data into a time series in mins to a time series in hours with `.resample('H').mean()`
 
 ---
 
@@ -72,22 +74,22 @@ Step 6: Return the final, clean time series
 
 ### 6. `fill_end_values(ts)`
 
-* **Purpose**: Applies both forward and backward fill to fill missing values at the beginning or end.
+* **Purpose**: Applies both forward and backward fill to fill missing values at the beginning or end
 
 ---
 
 ### 7. `interpolation_help()`
 
-* **Purpose**: Displays supported interpolation methods and when to use them.
+* **Purpose**: Displays supported interpolation methods and when to use them
 
 ---
 
 ### 8. `run_checks(ts)`
 
-* **Purpose**: Performs a final validation check on the time series.
+* **Purpose**: Performs a final validation check on the time series
 
-  * Index must be monotonic increasing.
-  * Warns if null values still remain.
+  * Index must be monotonic increasing
+  * Warns if null values still remain
 
 ---
 

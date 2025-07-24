@@ -77,10 +77,7 @@ def infer_frequency(df: pd.DataFrame) -> str:
     return pd.infer_freq(df["timestamp"].sort_values()) or "Unknown"
 
 #============================================================================
-# If you want to analyze the data in a different frequency, you can resample it using resample_series
-# This function Changes the frequency of the data by applying a summary method like avg or sum 
-# For example, it can convert minute data into hourly data by taking the avg or sum of values within each hour
-# converting the data into a time series in mins to a time series in hours
+# Resample the time series data, using the specified frequency and aggregation method
 #============================================================================
 def resample_series(df: pd.DataFrame, dependent_var: str, freq: possible_freq, agg: possible_agg) -> pd.Series:
     try:
