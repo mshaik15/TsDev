@@ -53,7 +53,7 @@ Step 6: Return the final, clean time series
 * **Purpose**: Resamples time series using the specified frequency and aggregation method
 * **Example**:
   * If you want to analyze the data in a different frequency, you can resample it using resample_series
-  * This function Changes the frequency of the data by applying a summary method like avg or sum 
+  * This function changes the frequency of the data by applying a summary method like avg or sum 
   * For example, it can convert minute data into hourly data by taking the avg or sum of values within each hour
   * Converting the data into a time series in mins to a time series in hours with `.resample('H').mean()`
 
@@ -64,7 +64,7 @@ Step 6: Return the final, clean time series
 * **Purpose**: Fills missing values using interpolation.
 * **Methods Supported**:
 
-  * `"linear"`: Straight line between points
+  * `"linear"`: Straight line between two points
   * `"time"`: Interpolation based on datetime index
   * `"spline"`: Smooth polynomial interpolation (requires `spline_order`)
   * `"ffill"`: Forward fill
@@ -112,7 +112,7 @@ Step 6: Return the final, clean time series
 
 ---
 
-## Suggested Frequencies (based on time delta)
+## Suggested Frequencies (based on time intervals)
 
 | Time Delta | Suggested `freq` |
 | ---------- | ---------------- |
@@ -121,7 +121,7 @@ Step 6: Return the final, clean time series
 | < 1 day    | `'D'`            |
 | ≥ 1 week   | `'W'` or `'M'`   |
 
-Use `infer_frequency(df)` to guide your selection.
+Use `infer_frequency(df)` for help
 
 ---
 
