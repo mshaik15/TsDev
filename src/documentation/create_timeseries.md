@@ -1,9 +1,9 @@
 
-# `construct_time_series` Pipeline Documentation
+# `construct_time_series` Function Pipeline Documentation
 
 ## Overview
 
-This module transforms a raw timestamped dataset into a clean, regularly spaced time series.
+This function transforms a raw timestamped dataset into a clean, regularly spaced time series.
 It supports **resampling**, **aggregation**, and **interpolation**, making it ideal for analysis of time-based data (e.g. sensor readings, financial data, etc.).
 
 ---
