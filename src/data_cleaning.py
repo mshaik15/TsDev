@@ -3,6 +3,7 @@ import numpy as np
 import os
 
 def standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    
     column_map = {
         # Timestamp candidates
         "time": "timestamp",
@@ -35,11 +36,30 @@ def standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def remove_missing_values(df: pd.DataFrame) -> pd.DataFrame:
+    # Used to test if it works
     df = df.copy()
     df = df.dropna(subset=["timestamp"])  
     return df
 
+def predictive_value(df: pd.DataFrame) -> pd.DataFrame:
+    for i, col in enumerate(df.columns, start=1):
+        print(f"{i} - {col}")
+
+    prediction_value = input("Which value would you like to predict? ").strip()
+
+    if prediction_value not in df.columns:
+        raise ValueError(f"Column '{prediction_value}' not found in DataFrame.")
+
+    df = df.copy()
+    df.rename(columns={prediction_value: "value"}, inplace=True)
+    
+    return df
+
+
 def clean_data(df: pd.DataFrame, file_path:str = None) -> pd.DataFrame:
+    if df.empty:
+        raise ValueError("Dataframe is Empty")
+    
     df = df.copy()
     df = standardize_columns(df) 
     df.drop_duplicates(inplace=True)
