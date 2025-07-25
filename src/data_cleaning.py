@@ -57,6 +57,7 @@ def predictive_value(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def clean_data(df: pd.DataFrame, file_path:str = None) -> pd.DataFrame:
+    
     if df.empty:
         raise ValueError("Dataframe is Empty")
     
@@ -67,6 +68,7 @@ def clean_data(df: pd.DataFrame, file_path:str = None) -> pd.DataFrame:
     df = remove_missing_values(df)
     df["timestamp"] = df["timestamp"].dt.strftime("%Y-%m-%d")
     df = df.sort_values("timestamp").reset_index(drop=True)
+    df = predictive_value(df)
 
     if file_path:
         base = os.path.basename(file_path)            
