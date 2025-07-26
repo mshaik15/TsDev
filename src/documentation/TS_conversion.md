@@ -85,39 +85,6 @@ This document outlines **four powerful techniques** for embedding time series in
 
 * Capturing seasonality
 * Detecting periodic or cyclical behavior
-
----
-
-## 4. 🔹 Deep Time Series Embeddings (e.g. TS2Vec)
-
-**How it works:**
-
-* A neural encoder (CNN or Transformer) processes the full time series
-* Embeddings are learned via contrastive learning:
-
-  $$
-  \mathcal{L} = -\log \frac{\exp(\text{sim}(h_i, h^+_i)/\tau)}{\sum_{j} \exp(\text{sim}(h_i, h^-_j)/\tau)}
-  $$
-
-  * $h_i$: anchor
-  * $h^+_i$: positive (same series, augmented)
-  * $h^-_j$: negatives (other series)
-  * $\text{sim}$: cosine similarity
-
-**Output:** Fixed-size vector, typically $\mathbb{R}^{128}$ or larger
-
-**Used for:**
-
-* Semantic similarity
-* Transfer learning
-* Cross-domain embeddings
-
-**Tools:**
-
-* [`TS2Vec`](https://github.com/zhoushengisnoob/TS2Vec)
-* [`TSTCC`](https://github.com/mims-harvard/TSTCC)
-* [`InceptionTime`](https://github.com/hfawaz/InceptionTime)
-
 ---
 
 ## 📌 Summary Comparison
