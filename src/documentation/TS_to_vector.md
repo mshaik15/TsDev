@@ -42,7 +42,7 @@ Each scalar is computed from \( W_i \).
 Compute DFT:
 
 $$
-\hat{X}_i[k] = \sum_{n=0}^{w-1} (W_i)_n \cdot e^{-j \frac{2\pi k n}{w}}, \quad k = 0, \dots, w-1
+|\hat{X}_i[k] = \sum_{n=0}^{w-1} (W_i)_n \cdot e^{-j \frac{2\pi k n}{w}}, \quad k = 0, \dots, w-1
 $$
 
 Compute magnitude:
