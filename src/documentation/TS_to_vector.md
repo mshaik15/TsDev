@@ -48,7 +48,7 @@ $$
 Compute magnitude:
 
 $$
-|\hat{X}_i[k]| = \sqrt{\operatorname{Re}(\hat{X}_i[k])^2 + \operatorname{Im}(\hat{X}_i[k])^2}
+|\hat{X}_i[k]| = \sqrt{\mathrm{Re}(\hat{X}_i[k])^2 + \mathrm{Im}(\hat{X}_i[k])^2}
 $$
 
 Take first \( K \) non-DC components:
