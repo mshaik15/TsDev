@@ -5,3 +5,5 @@ numpy
 pandas
 matplotlib
 scipy
+faiss-cpu  # or faiss-gpu if you have CUDA support (Later)
+networkx

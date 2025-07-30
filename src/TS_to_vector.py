@@ -35,4 +35,4 @@ def extract_feature_vector(window: np.ndarray, K: int) -> np.ndarray:
 def build_feature_matrix(x: np.ndarray, w: int, s: int, K: int) -> np.ndarray:
     windows = extract_sliding_windows(x, w, s)
     feature_matrix = np.array([extract_feature_vector(win, K) for win in windows])
-    return feature_matrix.T  # Transpose to match LaTeX: columns = window features
+    return feature_matrix.T
