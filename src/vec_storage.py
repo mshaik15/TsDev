@@ -6,7 +6,7 @@ from typing import List, Tuple, Optional, Dict
 from pathlib import Path
 
 # Import your existing time series to vector functions
-from TS_to_vector import build_feature_matrix
+from ts_to_vector import build_feature_matrix
 
 # Optional Pinecone import (graceful degradation if not installed)
 try:
