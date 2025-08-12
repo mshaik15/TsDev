@@ -8,6 +8,14 @@ from pathlib import Path
 # Import your existing time series to vector functions
 from TS_to_vector import build_feature_matrix
 
+# Optional Pinecone import (graceful degradation if not installed)
+try:
+    import pinecone
+    from pinecone import Pinecone, ServerlessSpec
+    PINECONE_AVAILABLE = True
+except ImportError:
+    PINECONE_AVAILABLE = False
+
 class TimeSeriesVectorStore:
     def __init__(self, dimension: int, index_type: str = "flat"):
         self.dimension = dimension
@@ -170,74 +178,91 @@ class TimeSeriesVectorStore:
         print(f"Loaded index with {self.index.ntotal} embeddings from {filepath}")
 
 
-# Example usage and integration with your pipeline
-def example_pipeline():
-    """Example showing how to integrate with your time series pipeline."""
+# Pinecone utility functions
+def create_pinecone_index(api_key: str, index_name: str, dimension: int, 
+                         metric: str = "cosine", cloud: str = "aws", region: str = "us-east-1"):
+    """Create a new Pinecone index"""
+    if not PINECONE_AVAILABLE:
+        raise ImportError("Pinecone not installed. Install with: pip install pinecone-client")
     
-    # Generate some example time series data
-    np.random.seed(42)
-    time_series_data = []
+    pc = Pinecone(api_key=api_key)
     
-    # Create some synthetic time series with different patterns
-    for i in range(20):
-        # Mix of trends, seasonality, and noise
-        t = np.arange(200)
-        trend = 0.01 * i * t
-        seasonal = 5 * np.sin(2 * np.pi * t / 50) + 2 * np.cos(2 * np.pi * t / 20)
-        noise = np.random.normal(0, 1, len(t))
-        ts = trend + seasonal + noise
-        time_series_data.append(ts)
+    if index_name not in pc.list_indexes().names():
+        print(f"Creating Pinecone index: {index_name}")
+        pc.create_index(
+            name=index_name,
+            dimension=dimension,
+            metric=metric,
+            spec=ServerlessSpec(cloud=cloud, region=region)
+        )
+    else:
+        print(f"Index {index_name} already exists")
     
-    # Calculate dimension based on your pipeline
-    # 7 statistical features + K FFT components
-    K = 20  # FFT components
-    dimension = 7 + K
+    return pc.Index(index_name)
+
+def add_timeseries_to_pinecone(index, time_series_list: List[np.ndarray], 
+                              window_size: int = 50, stride: int = 1, 
+                              fft_components: int = 20, 
+                              metadata_list: Optional[List[Dict]] = None):
+    """Add time series embeddings to Pinecone index"""
+    vectors_to_upsert = []
     
-    # Initialize vector store
-    vector_store = TimeSeriesVectorStore(dimension=dimension, index_type="flat")
+    for i, ts in enumerate(time_series_list):
+        # Convert to embedding
+        feature_matrix = build_feature_matrix(ts, window_size, stride, fft_components)
+        ts_embedding = np.mean(feature_matrix, axis=1)
+        
+        # Prepare metadata
+        meta = {"ts_index": i, "length": len(ts)}
+        if metadata_list and i < len(metadata_list):
+            meta.update(metadata_list[i])
+        
+        # Create vector for Pinecone
+        vector_data = {
+            "id": f"ts_{i}",
+            "values": ts_embedding.tolist(),
+            "metadata": meta
+        }
+        vectors_to_upsert.append(vector_data)
     
-    # Add time series to the store
-    metadata = [{"series_id": f"ts_{i}", "pattern": "mixed"} for i in range(len(time_series_data))]
-    vector_store.add_time_series(
-        time_series_data, 
-        window_size=50, 
-        stride=1, 
-        fft_components=K,
-        metadata_list=metadata
+    # Upsert in batches
+    batch_size = 100
+    for i in range(0, len(vectors_to_upsert), batch_size):
+        batch = vectors_to_upsert[i:i + batch_size]
+        index.upsert(vectors=batch)
+    
+    print(f"Added {len(vectors_to_upsert)} time series to Pinecone index")
+
+def search_pinecone(index, query_ts: np.ndarray, k: int = 5,
+                   window_size: int = 50, stride: int = 1, fft_components: int = 20):
+    """Search for similar time series in Pinecone"""
+    # Convert query to embedding
+    query_features = build_feature_matrix(query_ts, window_size, stride, fft_components)
+    query_embedding = np.mean(query_features, axis=1)
+    
+    # Search
+    results = index.query(
+        vector=query_embedding.tolist(),
+        top_k=k,
+        include_metadata=True
     )
     
-    # Save the index
-    vector_store.save_index("my_timeseries_index")
-    
-    # Search for similar time series
-    query_ts = time_series_data[0]  # Use first time series as query
-    distances, indices, result_metadata = vector_store.search_similar(
-        query_ts, k=5, window_size=50, stride=1, fft_components=K
-    )
-    
-    print("\nSimilarity search results:")
-    for i, (dist, idx, meta) in enumerate(zip(distances, indices, result_metadata)):
-        print(f"  Rank {i+1}: Index {idx}, Distance: {dist:.4f}, Metadata: {meta}")
-    
-    # Build similarity graph
-    similarity_graph = vector_store.build_similarity_graph(k_neighbors=3)
-    
-    print(f"\nGraph statistics:")
-    print(f"  Nodes: {similarity_graph.number_of_nodes()}")
-    print(f"  Edges: {similarity_graph.number_of_edges()}")
-    print(f"  Average clustering: {nx.average_clustering(similarity_graph):.4f}")
-    
-    # Optional: Save graph
-    nx.write_gexf(similarity_graph, "timeseries_similarity_graph.gexf")
-    
-    return vector_store, similarity_graph
+    return results
 
-
-if __name__ == "__main__":
-    # Run the example
-    vector_store, graph = example_pipeline()
+def delete_pinecone_index(api_key: str, index_name: str):
+    """Delete a Pinecone index"""
+    if not PINECONE_AVAILABLE:
+        raise ImportError("Pinecone not installed. Install with: pip install pinecone-client")
     
-    # Load the index back (demonstration)
-    new_store = TimeSeriesVectorStore(dimension=27)  # 7 + 20
-    new_store.load_index("my_timeseries_index")
-    print(f"\nLoaded index has {new_store.index.ntotal} embeddings")
+    pc = Pinecone(api_key=api_key)
+    pc.delete_index(index_name)
+    print(f"Deleted Pinecone index: {index_name}")
+
+def get_pinecone_stats(index):
+    """Get statistics about a Pinecone index"""
+    return index.describe_index_stats()
+
+# Helper function to calculate embedding dimension
+def calculate_embedding_dimension(fft_components: int = 20) -> int:
+    """Calculate the dimension of time series embeddings"""
+    return 7 + fft_components  # 7 statistical features + FFT components
