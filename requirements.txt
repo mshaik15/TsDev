@@ -7,7 +7,7 @@ matplotlib
 scipy
 faiss-cpu  # or faiss-gpu if you have CUDA support (Later)
 networkx
-scikit-learn  # for additional statistical features if needed
+torch
 pinecone-client  # for cloud vector database
 jupyter  # for running notebooks
 notebook  # jupyter notebook interface
