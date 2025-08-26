@@ -4,4 +4,12 @@
 numpy
 pandas
 matplotlib
+scipy
+scitkit-learn
+faiss-cpu      # use faiss-gpu instead if you have CUDA + GPU
+networkx
+torch
+pinecone
+jupyter
+notebook
 ipykernel
