@@ -146,3 +146,4 @@ def construct_time_series(
         ts = fill_end_values(ts)
     run_checks(ts)
     return ts
+

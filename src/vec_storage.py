@@ -2,9 +2,9 @@ import numpy as np
 import faiss
 import pickle
 import networkx as nx
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Union
 from pathlib import Path
-from .TS_to_vector import build_feature_matrix
+from TS_to_vector import build_feature_matrix
 
 try:
     import pinecone
@@ -20,6 +20,7 @@ class TimeSeriesVectorStore:
         self.index = None
         self.metadata = []
         self.is_trained = False
+        self.sources = set()  # Track all data sources
         
         self._create_index()
     
@@ -43,8 +44,16 @@ class TimeSeriesVectorStore:
         else:
             raise ValueError(f"Unsupported index type: {self.index_type}")
     
-    def add_time_series(self, time_series_list: List[np.ndarray], window_size: int, stride: int, fft_components: int, metadata_list: Optional[List[Dict]]):
-
+    def add_time_series(self, time_series_list: List[np.ndarray], window_size: int, stride: int, 
+                       fft_components: int, metadata_list: Optional[List[Dict]] = None, source: str = "unknown"):
+        """
+        Add time series to the vector store with a source identifier
+        
+        Parameters:
+        -----------
+        source : str
+            Identifier for the data source (e.g., "avocado", "donut_searches")
+        """
         all_embeddings = []
         all_metadata = []
         
@@ -53,11 +62,12 @@ class TimeSeriesVectorStore:
             ts_embedding = np.mean(feature_matrix, axis=1).reshape(1, -1)
             all_embeddings.append(ts_embedding)
             
-            meta = {"ts_index": i, "length": len(ts)}
+            meta = {"ts_index": i, "length": len(ts), "source": source}
             if metadata_list and i < len(metadata_list):
                 meta.update(metadata_list[i])
             all_metadata.append(meta)
         
+        self.sources.add(source)
 
         embeddings_matrix = np.vstack(all_embeddings).astype(np.float32)
 
@@ -70,12 +80,38 @@ class TimeSeriesVectorStore:
         self.index.add(embeddings_matrix)
         self.metadata.extend(all_metadata)
         
-        print(f"Added {len(embeddings_matrix)} embeddings to index. Total: {self.index.ntotal}")
+        print(f"Added {len(embeddings_matrix)} embeddings from {source} to index. Total: {self.index.ntotal}")
+    
+    def add_multiple_datasets(self, datasets: Dict[str, List[np.ndarray]], window_size: int, stride: int, fft_components: int):
+        """
+        Add multiple datasets to the vector store.
+        
+        Parameters:
+        -----------
+        datasets : Dict[str, List[np.ndarray]]
+            Dictionary where keys are source names and values are lists of time series.
+        """
+        for source, time_series_list in datasets.items():
+            self.add_time_series(time_series_list, window_size, stride, fft_components, source=source)
+    
+    def get_vectors_by_source(self, source: str):
+        """Get all vectors and metadata for a specific source"""
+        indices = [i for i, meta in enumerate(self.metadata) if meta.get("source") == source]
+        vectors = [self.index.reconstruct(i) for i in indices]
+        metadata = [self.metadata[i] for i in indices]
+        return vectors, metadata, indices
     
     def search_similar(self, query_ts: np.ndarray, k: int = 5, 
                       window_size: int = 50, stride: int = 1, 
-                      fft_components: int = 20) -> Tuple[np.ndarray, np.ndarray, List[Dict]]:
-
+                      fft_components: int = 20, source_filter: Optional[Union[str, List[str]]] = None) -> Tuple[np.ndarray, np.ndarray, List[Dict]]:
+        """
+        Search for similar time series, optionally filtered by source
+        
+        Parameters:
+        -----------
+        source_filter : str or list of str, optional
+            If provided, only return results from this source(s)
+        """
         query_features = build_feature_matrix(query_ts, window_size, stride, fft_components)
         query_embedding = np.mean(query_features, axis=1).reshape(1, -1).astype(np.float32)
         
@@ -83,47 +119,141 @@ class TimeSeriesVectorStore:
         distances, indices = self.index.search(query_embedding, k)
         
         # Get metadata for results
-        result_metadata = [self.metadata[idx] for idx in indices[0] if idx < len(self.metadata)]
+        result_metadata = []
+        result_distances = []
+        result_indices = []
         
-        return distances[0], indices[0], result_metadata
+        for i, (dist, idx) in enumerate(zip(distances[0], indices[0])):
+            if idx < len(self.metadata):
+                meta = self.metadata[idx]
+                # Apply source filter if provided
+                if source_filter is not None:
+                    if isinstance(source_filter, str):
+                        if meta.get("source") != source_filter:
+                            continue
+                    else:  # list of sources
+                        if meta.get("source") not in source_filter:
+                            continue
+                result_metadata.append(meta)
+                result_distances.append(dist)
+                result_indices.append(idx)
+        
+        return np.array(result_distances), np.array(result_indices), result_metadata
     
-    def build_similarity_graph(self, k_neighbors: int = 5, distance_threshold: Optional[float] = None) -> nx.Graph:
+    def build_similarity_graph(self, k_neighbors: int = 5, distance_threshold: Optional[float] = None, 
+                              source_filter: Optional[Union[str, List[str]]] = None) -> nx.Graph:
+        """
+        Build a similarity graph, optionally filtered by source
+        """
         if self.index.ntotal == 0:
             raise ValueError("No embeddings in index. Add embeddings first.")
         
-        print(f"Building similarity graph with {self.index.ntotal} nodes...")
+        # Get indices for the specified source (or all if no filter)
+        if source_filter:
+            if isinstance(source_filter, str):
+                indices = [i for i, meta in enumerate(self.metadata) if meta.get("source") == source_filter]
+            else:
+                indices = [i for i, meta in enumerate(self.metadata) if meta.get("source") in source_filter]
+            if not indices:
+                raise ValueError(f"No embeddings found for source: {source_filter}")
+            print(f"Building similarity graph for {source_filter} with {len(indices)} nodes...")
+        else:
+            indices = list(range(self.index.ntotal))
+            print(f"Building similarity graph with {self.index.ntotal} nodes...")
         
-        # Get all embeddings from index
-        all_embeddings = self.index.reconstruct_n(0, self.index.ntotal)
+        # Get embeddings for the selected indices
+        all_embeddings = np.array([self.index.reconstruct(i) for i in indices], dtype=np.float32)
         
         # Search for neighbors of each embedding
-        distances, indices = self.index.search(all_embeddings, k_neighbors + 1)  # +1 because first result is self
+        distances, neighbor_indices = self.index.search(all_embeddings, k_neighbors + 1)  # +1 because first result is self
         
         # Create graph
         G = nx.Graph()
         
         # Add nodes with metadata
-        for i in range(self.index.ntotal):
-            node_attrs = {"embedding_id": i}
-            if i < len(self.metadata):
-                node_attrs.update(self.metadata[i])
-            G.add_node(i, **node_attrs)
+        for idx in indices:
+            node_attrs = {"embedding_id": idx}
+            if idx < len(self.metadata):
+                node_attrs.update(self.metadata[idx])
+            G.add_node(idx, **node_attrs)
         
         # Add edges
         edge_count = 0
-        for i in range(len(indices)):
-            for j in range(1, len(indices[i])):  # Skip first result (self)
-                neighbor_idx = indices[i][j]
+        for i, idx in enumerate(indices):
+            for j in range(1, len(neighbor_indices[i])):  # Skip first result (self)
+                neighbor_idx = neighbor_indices[i][j]
                 distance = distances[i][j]
                 
                 # Filter by distance threshold if provided
                 if distance_threshold is None or distance <= distance_threshold:
-                    if not G.has_edge(i, neighbor_idx):  # Avoid duplicate edges
-                        G.add_edge(i, neighbor_idx, weight=distance, similarity=1.0/(1.0 + distance))
+                    # Apply source filter to edges if provided
+                    if source_filter is not None:
+                        if neighbor_idx >= len(self.metadata):
+                            continue
+                        neighbor_source = self.metadata[neighbor_idx].get("source")
+                        if isinstance(source_filter, str):
+                            if neighbor_source != source_filter:
+                                continue
+                        else:
+                            if neighbor_source not in source_filter:
+                                continue
+                    if not G.has_edge(idx, neighbor_idx):  # Avoid duplicate edges
+                        G.add_edge(idx, neighbor_idx, weight=distance, similarity=1.0/(1.0 + distance))
                         edge_count += 1
         
         print(f"Created graph with {G.number_of_nodes()} nodes and {G.number_of_edges()} edges")
         return G
+    
+    def cross_dataset_similarity(self, source1: str, source2: str, metric: str = "cosine", top_k: int = 5):
+        """
+        Find the most similar vectors between two datasets
+        
+        Parameters:
+        -----------
+        source1, source2 : str
+            Names of the datasets to compare
+        metric : str
+            Similarity metric ("cosine" or "euclidean")
+        top_k : int
+            Number of top matches to return for each vector
+        
+        Returns:
+        --------
+        Dict[int, List[Tuple[int, float]]]
+            Mapping from source1 vector indices to list of (source2 vector index, similarity) tuples
+        """
+        # Get vectors from both sources
+        vecs1, meta1, indices1 = self.get_vectors_by_source(source1)
+        vecs2, meta2, indices2 = self.get_vectors_by_source(source2)
+        
+        if not vecs1 or not vecs2:
+            raise ValueError(f"One or both sources not found: {source1}, {source2}")
+        
+        vecs1 = np.array(vecs1, dtype=np.float32)
+        vecs2 = np.array(vecs2, dtype=np.float32)
+        
+        # Calculate similarity matrix
+        if metric == "cosine":
+            from sklearn.metrics.pairwise import cosine_similarity
+            sim_matrix = cosine_similarity(vecs1, vecs2)
+        elif metric == "euclidean":
+            from sklearn.metrics.pairwise import euclidean_distances
+            dist_matrix = euclidean_distances(vecs1, vecs2)
+            # Convert distance to similarity
+            sim_matrix = 1 / (1 + dist_matrix)
+        else:
+            raise ValueError("Unsupported metric. Use 'cosine' or 'euclidean'.")
+        
+        # Find top-k matches for each vector in source1
+        results = {}
+        for i, (vec_idx, similarities) in enumerate(zip(indices1, sim_matrix)):
+            # Get indices of top-k matches
+            top_indices = np.argsort(similarities)[-top_k:][::-1]
+            # Map back to original indices
+            matches = [(indices2[j], similarities[j]) for j in top_indices]
+            results[vec_idx] = matches
+        
+        return results
     
     def save_index(self, filepath: str):
         """Save FAISS index and metadata to disk."""
@@ -137,7 +267,8 @@ class TimeSeriesVectorStore:
             'metadata': self.metadata,
             'dimension': self.dimension,
             'index_type': self.index_type,
-            'is_trained': self.is_trained
+            'is_trained': self.is_trained,
+            'sources': list(self.sources)
         }
         
         with open(filepath.with_suffix('.pkl'), 'wb') as f:
@@ -160,95 +291,15 @@ class TimeSeriesVectorStore:
         self.dimension = config['dimension']
         self.index_type = config['index_type']
         self.is_trained = config['is_trained']
+        self.sources = set(config.get('sources', []))
         
         print(f"Loaded index with {self.index.ntotal} embeddings from {filepath}")
+        print(f"Sources in index: {', '.join(self.sources)}")
 
-
-# Pinecone utility functions
-def create_pinecone_index(api_key: str, index_name: str, dimension: int, 
-                         metric: str = "cosine", cloud: str = "aws", region: str = "us-east-1"):
-    """Create a new Pinecone index"""
-    if not PINECONE_AVAILABLE:
-        raise ImportError("Pinecone not installed. Install with: pip install pinecone-client")
-    
-    pc = Pinecone(api_key=api_key)
-    
-    if index_name not in pc.list_indexes().names():
-        print(f"Creating Pinecone index: {index_name}")
-        pc.create_index(
-            name=index_name,
-            dimension=dimension,
-            metric=metric,
-            spec=ServerlessSpec(cloud=cloud, region=region)
-        )
-    else:
-        print(f"Index {index_name} already exists")
-    
-    return pc.Index(index_name)
-
-def add_timeseries_to_pinecone(index, time_series_list: List[np.ndarray], 
-                              window_size: int = 50, stride: int = 1, 
-                              fft_components: int = 20, 
-                              metadata_list: Optional[List[Dict]] = None):
-    """Add time series embeddings to Pinecone index"""
-    vectors_to_upsert = []
-    
-    for i, ts in enumerate(time_series_list):
-        # Convert to embedding
-        feature_matrix = build_feature_matrix(ts, window_size, stride, fft_components)
-        ts_embedding = np.mean(feature_matrix, axis=1)
-        
-        # Prepare metadata
-        meta = {"ts_index": i, "length": len(ts)}
-        if metadata_list and i < len(metadata_list):
-            meta.update(metadata_list[i])
-        
-        # Create vector for Pinecone
-        vector_data = {
-            "id": f"ts_{i}",
-            "values": ts_embedding.tolist(),
-            "metadata": meta
-        }
-        vectors_to_upsert.append(vector_data)
-    
-    # Upsert in batches
-    batch_size = 100
-    for i in range(0, len(vectors_to_upsert), batch_size):
-        batch = vectors_to_upsert[i:i + batch_size]
-        index.upsert(vectors=batch)
-    
-    print(f"Added {len(vectors_to_upsert)} time series to Pinecone index")
-
-def search_pinecone(index, query_ts: np.ndarray, k: int = 5,
-                   window_size: int = 50, stride: int = 1, fft_components: int = 20):
-    """Search for similar time series in Pinecone"""
-    # Convert query to embedding
-    query_features = build_feature_matrix(query_ts, window_size, stride, fft_components)
-    query_embedding = np.mean(query_features, axis=1)
-    
-    # Search
-    results = index.query(
-        vector=query_embedding.tolist(),
-        top_k=k,
-        include_metadata=True
-    )
-    
-    return results
-
-def delete_pinecone_index(api_key: str, index_name: str):
-    """Delete a Pinecone index"""
-    if not PINECONE_AVAILABLE:
-        raise ImportError("Pinecone not installed. Install with: pip install pinecone-client")
-    
-    pc = Pinecone(api_key=api_key)
-    pc.delete_index(index_name)
-    print(f"Deleted Pinecone index: {index_name}")
-
-def get_pinecone_stats(index):
-    """Get statistics about a Pinecone index"""
-    return index.describe_index_stats()
-
-# Helper function to calculate embedding dimension
-def calculate_embedding_dimension(fft_components: int = 20) -> int:
-    """Calculate the dimension of time series embeddings"""
-    return 7 + fft_components  # 7 statistical features + FFT components
+    @staticmethod
+    def calculate_embedding_dimension(window_size: int, fft_components: int = 20) -> int:
+        """Calculate the dimension of time series embeddings"""
+        # The number of FFT features is limited by window size
+        # We can't have more FFT features than window_size - 1 (since we exclude DC component)
+        actual_fft_components = min(fft_components, window_size - 1)
+        return 7 + actual_fft_components  # 7 statistical features + FFT components

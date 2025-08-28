@@ -56,7 +56,7 @@ def predictive_value(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def clean_data(df: pd.DataFrame, file_path:str = None) -> pd.DataFrame:
+def clean_data(df: pd.DataFrame, file_path:str = None, dataset_name: str = None) -> pd.DataFrame:
     
     if df.empty:
         raise ValueError("Dataframe is Empty")
@@ -69,6 +69,14 @@ def clean_data(df: pd.DataFrame, file_path:str = None) -> pd.DataFrame:
     df["timestamp"] = df["timestamp"].dt.strftime("%Y-%m-%d")
     df = df.sort_values("timestamp").reset_index(drop=True)
     df = predictive_value(df)
+    
+    # Add dataset source identifier
+    if dataset_name:
+        df["dataset_source"] = dataset_name
+    elif file_path:
+        base = os.path.basename(file_path)            
+        name, _ = os.path.splitext(base)                    
+        df["dataset_source"] = name
 
     if file_path:
         base = os.path.basename(file_path)            
